@@ -158,8 +158,11 @@ object GameEngine {
         if (toId !in from.neighbors) return null
         if (to.irradiatedUntil > now) return null
         if (from.units.isEmpty()) return null
-        val attackPower  = from.units.sumOf { it.type.attack  * (it.hp.toFloat() / it.type.baseHp) }
-        val defensePower = to.units.sumOf   { it.type.defense * (it.hp.toFloat() / it.type.baseHp) }
+        
+        // AQUÍ ESTABA EL ERROR: Convertimos el resultado a Int para que sumOf lo acepte
+        val attackPower  = from.units.sumOf { (it.type.attack  * (it.hp.toFloat() / it.type.baseHp)).toInt() }
+        val defensePower = to.units.sumOf   { (it.type.defense * (it.hp.toFloat() / it.type.baseHp)).toInt() }
+        
         val provinces = s.provinces.toMutableList()
         val fromIdx = provinces.indexOfFirst { it.id == fromId }
         val toIdx   = provinces.indexOfFirst { it.id == toId }
