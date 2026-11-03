@@ -159,9 +159,9 @@ object GameEngine {
         if (to.irradiatedUntil > now) return null
         if (from.units.isEmpty()) return null
         
-        // AQUÍ ESTABA EL ERROR: Convertimos el resultado a Int para que sumOf lo acepte
-        val attackPower  = from.units.sumOf { (it.type.attack  * (it.hp.toFloat() / it.type.baseHp)).toInt() }
-        val defensePower = to.units.sumOf   { (it.type.defense * (it.hp.toFloat() / it.type.baseHp)).toInt() }
+        // LÍNEA CORREGIDA AQUÍ
+        val attackPower  = from.units.map { it.type.attack * (it.hp.toFloat() / it.type.baseHp) }.sum()
+        val defensePower = to.units.map   { it.type.defense * (it.hp.toFloat() / it.type.baseHp) }.sum()
         
         val provinces = s.provinces.toMutableList()
         val fromIdx = provinces.indexOfFirst { it.id == fromId }
