@@ -159,9 +159,9 @@ object GameEngine {
         if (to.irradiatedUntil > now) return null
         if (from.units.isEmpty()) return null
         
-        // AQUÍ ESTÁ LA MAGIA: Cambiamos a Double y forzamos a que devuelva un Int para que sumOf sea feliz
-        val attackPower  = from.units.sumOf { (it.type.attack  * (it.hp.toDouble() / it.type.baseHp)).toInt() }
-        val defensePower = to.units.sumOf   { (it.type.defense * (it.hp.toDouble() / it.type.baseHp)).toInt() }
+        // SOLUCIÓN: Usamos map para transformar a enteros y luego sum() para evitar el error de tipos
+        val attackPower  = from.units.map { u -> (u.type.attack  * (u.hp.toDouble() / u.type.baseHp)).toInt() }.sum()
+        val defensePower = to.units.map   { u -> (u.type.defense * (u.hp.toDouble() / u.type.baseHp)).toInt() }.sum()
         
         val provinces = s.provinces.toMutableList()
         val fromIdx = provinces.indexOfFirst { it.id == fromId }
