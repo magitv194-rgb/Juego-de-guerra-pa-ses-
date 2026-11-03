@@ -159,9 +159,20 @@ object GameEngine {
         if (to.irradiatedUntil > now) return null
         if (from.units.isEmpty()) return null
         
-        // SOLUCIÓN: Usamos map para transformar a enteros y luego sum() para evitar el error de tipos
-        val attackPower  = from.units.map { u -> (u.type.attack  * (u.hp.toDouble() / u.type.baseHp)).toInt() }.sum()
-        val defensePower = to.units.map   { u -> (u.type.defense * (u.hp.toDouble() / u.type.baseHp)).toInt() }.sum()
+        // AQUÍ APLICAMOS TU IDEA: Contamos el daño de cada uno por separado con un bucle for
+        var attackPower = 0
+        for (unidad in from.units) {
+            val proporcionVida = unidad.hp.toDouble() / unidad.type.baseHp
+            val danoUnidad = unidad.type.attack * proporcionVida
+            attackPower += danoUnidad.toInt()
+        }
+
+        var defensePower = 0
+        for (unidad in to.units) {
+            val proporcionVida = unidad.hp.toDouble() / unidad.type.baseHp
+            val defensaUnidad = unidad.type.defense * proporcionVida
+            defensePower += defensaUnidad.toInt()
+        }
         
         val provinces = s.provinces.toMutableList()
         val fromIdx = provinces.indexOfFirst { it.id == fromId }
