@@ -49,12 +49,13 @@ enum class BuildingType(
     val cost: Resources,
     val productionBonus: Float = 0f
 ) {
+    MILITARY_BASE("Base militar",      4, 25, Resources(300, 100, 150,  50), 0f),
     BARRACKS    ("Cuartel",           5, 20, Resources(150,  50,  50,   0), 0f),
     FARM        ("Granja",            5, 20, Resources(100,   0,   0,   0), 0.20f),
     MINE        ("Mina",              5, 20, Resources(120,   0,  40,   0), 0.20f),
     OIL_RIG     ("Pozo de petróleo",  5, 25, Resources(150,   0,  60,   0), 0.20f),
     MARKET      ("Mercado",           5, 20, Resources(100,  20,   0,   0), 0.20f),
-    FACTORY     ("Fábrica",           3, 45, Resources(250,   0, 120,  60), 0f),
+    FACTORY     ("Fábrica",           4,  2, Resources(250,   0, 120,  60), 0f),
     RESEARCH_LAB("Laboratorio",       3, 60, Resources(300,   0, 150, 100), 0f)
 }
 
@@ -120,6 +121,7 @@ data class GameState(
     val researchQueue: List<ResearchOrder> = emptyList(),
     val constructionQueue: List<ConstructionOrder> = emptyList(),
     val lastResourceTick: Long = System.currentTimeMillis(),
+    val lastFactoryTick: Long = System.currentTimeMillis(),
     val gameStartTime: Long = System.currentTimeMillis()
 )
 
@@ -129,7 +131,9 @@ fun defaultCountries(): List<Country> = listOf(
 )
 
 fun defaultProvinces(): List<Province> = listOf(
-    Province("p1", "Capital Federal",  "player", listOf("p2","p4"),          Resources(50,30,20,15), 0, 0),
+    Province("p1", "Buenos Aires (Capital)", "player", listOf("p2","p4"), Resources(50,30,20,15), 0, 0,
+        buildings = listOf(Building(BuildingType.MILITARY_BASE), Building(BuildingType.BARRACKS), Building(BuildingType.FACTORY)),
+        units = List(20) { MilitaryUnit("arg-start-$it", UnitType.SOLDIER, UnitType.SOLDIER.baseHp) }),
     Province("p2", "Costa Norte",      "player", listOf("p1","p3","p5"),     Resources(30,40,10,10), 1, 0),
     Province("p3", "Puerto",           "player", listOf("p2","p6"),          Resources(40,20,15,30), 2, 0),
     Province("p4", "Llanura Central",  "player", listOf("p1","p5","p7"),     Resources(20,50,20,10), 0, 1),
@@ -137,5 +141,7 @@ fun defaultProvinces(): List<Province> = listOf(
     Province("p6", "Río",              "player", listOf("p3","p5","p9"),     Resources(35,40,10,10), 2, 1),
     Province("p7", "Desierto",         "enemy",  listOf("p4","p8"),          Resources(15,10,20,50), 0, 2),
     Province("p8", "Frontera",         "enemy",  listOf("p5","p7","p9"),     Resources(20,20,30,20), 1, 2),
-    Province("p9", "Fortaleza",        "enemy",  listOf("p6","p8"),          Resources(30,15,40,15), 2, 2)
+    Province("p9", "Capital rival",    "enemy",  listOf("p6","p8"),          Resources(30,15,40,15), 2, 2,
+        buildings = listOf(Building(BuildingType.MILITARY_BASE), Building(BuildingType.BARRACKS), Building(BuildingType.FACTORY)),
+        units = List(20) { MilitaryUnit("rival-start-$it", UnitType.SOLDIER, UnitType.SOLDIER.baseHp) })
 )
