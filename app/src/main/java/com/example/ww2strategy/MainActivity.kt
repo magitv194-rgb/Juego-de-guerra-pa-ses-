@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
                     val vm: GameViewModel = viewModel()
                     GameApp(vm)
                 } else {
-                    BetaMenuScreen(onOpenGame = { showGame = true })
+                    BetaMenuScreen(onOpenGame = { showGame = true }, onCreateGame = { showGame = true })
                 }
             }
         }
