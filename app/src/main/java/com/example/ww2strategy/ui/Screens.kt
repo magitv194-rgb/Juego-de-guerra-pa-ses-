@@ -26,7 +26,8 @@ fun MapScreen(
     state: GameState,
     selectedId: String?,
     onSelect: (String) -> Unit,
-    onAttack: (String, String) -> Unit
+    onAttack: (String, String) -> Unit,
+    onConstruct: (BuildingType) -> Unit
 ) {
     Column(Modifier.fillMaxSize().padding(8.dp)) {
         LazyVerticalGrid(
@@ -42,7 +43,7 @@ fun MapScreen(
         Spacer(Modifier.height(8.dp))
         val selected = state.provinces.firstOrNull { it.id == selectedId }
         if (selected != null) {
-            ProvinceDetail(selected, state, onAttack)
+            ProvinceDetail(selected, state, onAttack, onConstruct)
         } else {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text("Selecciona una provincia", style = MaterialTheme.typography.bodyMedium)
@@ -82,7 +83,12 @@ private fun ProvinceCell(p: Province, state: GameState, selected: Boolean, onCli
 }
 
 @Composable
-private fun ProvinceDetail(p: Province, state: GameState, onAttack: (String, String) -> Unit) {
+private fun ProvinceDetail(
+    p: Province,
+    state: GameState,
+    onAttack: (String, String) -> Unit,
+    onConstruct: (BuildingType) -> Unit
+) {
     val country = state.countries.firstOrNull { it.id == p.ownerCountryId }
     val isMine = p.ownerCountryId == state.playerCountryId
     val irradiated = p.irradiatedUntil > System.currentTimeMillis()
@@ -90,9 +96,54 @@ private fun ProvinceDetail(p: Province, state: GameState, onAttack: (String, Str
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("${p.name} — ${country?.name ?: "?"}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Text("Moral: ${p.morale.roundToInt()}%   Unidades: ${p.units.size}", fontSize = 13.sp)
-            Text("Edificios: ${p.buildings.size}", fontSize = 13.sp)
+            Text("Edificios:", fontSize = 13.sp)
+            if (p.buildings.isEmpty()) Text("Ninguno", fontSize = 12.sp)
+            p.buildings.forEach { building ->
+                val percentage = when (building.type) {
+                    BuildingType.FACTORY -> when (building.level) {
+                        1 -> "20%"; 2 -> "50%"; 3 -> "100%"; else -> "150%"
+                    }
+                    else -> ""
+                }
+                Text("• ${building.type.displayName} nivel ${building.level}" +
+                    if (percentage.isNotEmpty()) " — producción $percentage cada 2 min" else "",
+                    fontSize = 12.sp)
+            }
             if (irradiated) Text("☢️ IRRADIADA — no conquistable", color = Color.Red, fontSize = 12.sp)
             if (isMine) {
+                Text("Construir o mejorar edificios:", fontSize = 13.sp,
+                    modifier = Modifier.padding(top = 8.dp))
+                BuildingType.entries.forEach { type ->
+                    val current = p.buildings.firstOrNull { it.type == type }
+                    val queued = state.constructionQueue.any {
+                        it.provinceId == p.id && it.type == type
+                    }
+                    val atMax = current != null && current.level >= type.maxLevel
+                    val action = if (current == null) "Construir" else "Mejorar"
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("${type.displayName} " +
+                                (current?.let { "Nv. ${it.level} → ${it.level + 1}" } ?: "Nv. 1"),
+                                fontSize = 12.sp)
+                            Text("💵 ${type.cost.money} · ⚙️ ${type.cost.metal} · ⏱ ${type.minutes} min",
+                                fontSize = 10.sp)
+                        }
+                        Button(
+                            onClick = { onConstruct(type) },
+                            enabled = !queued && !atMax && state.resources.canAfford(type.cost)
+                        ) {
+                            Text(when {
+                                queued -> "En cola"
+                                atMax -> "Máximo"
+                                else -> action
+                            }, fontSize = 10.sp)
+                        }
+                    }
+                }
                 Text("Vecinos enemigos:", fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
                 val enemies = p.neighbors
                     .mapNotNull { nid -> state.provinces.firstOrNull { it.id == nid } }
