@@ -20,7 +20,7 @@ private val betaCountries = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BetaMenuScreen(onOpenGame: () -> Unit) {
+fun BetaMenuScreen(onOpenGame: () -> Unit, onCreateGame: () -> Unit) {
     var page by remember { mutableStateOf("inicio") }
     var playerCount by remember { mutableIntStateOf(2) }
     var selectedCountry by remember { mutableStateOf(betaCountries.first()) }
@@ -109,8 +109,14 @@ fun BetaMenuScreen(onOpenGame: () -> Unit) {
                             Text("Configuración elegida", fontWeight = FontWeight.Bold)
                             Text("$selectedMap · $playerCount jugadores")
                             Text("País: $selectedCountry")
-                            Text("Esta selección es una vista previa: el generador de mapas y países reales todavía debe conectarse al motor.")
+                            Text("La selección se guarda como configuración local de prueba. El mapa mundial histórico con provincias reales todavía está en desarrollo.")
                         }
+                    }
+                    Button(
+                        onClick = onCreateGame,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Crear mapa e iniciar prototipo")
                     }
                 }
                 "perfil" -> {
