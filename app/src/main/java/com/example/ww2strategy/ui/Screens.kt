@@ -1,6 +1,18 @@
 package com.example.ww2strategy.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.Path
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,57 +41,145 @@ fun MapScreen(
     onAttack: (String, String) -> Unit,
     onConstruct: (BuildingType) -> Unit
 ) {
-    Column(Modifier.fillMaxSize().padding(8.dp)) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            modifier = Modifier.weight(1.2f),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            items(state.provinces) { p ->
-                ProvinceCell(p, state, p.id == selectedId) { onSelect(p.id) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val features = remember {
+        val raw = context.assets.open("argentina_provinces.json").bufferedReader().use { it.readText() }
+        val root = kotlinx.serialization.json.Json.parseToJsonElement(raw).jsonObject
+        root["features"]!!.jsonArray.map { item ->
+            val obj = item.jsonObject
+            val center = obj["center"]!!.jsonArray
+            val points = obj["points"]!!.jsonArray.map { pair ->
+                val values = pair.jsonArray
+                androidx.compose.ui.geometry.Offset(values[0].jsonPrimitive.float, values[1].jsonPrimitive.float)
+            }
+            ArgentinaFeature(
+                id = obj["id"]!!.jsonPrimitive.content,
+                name = obj["name"]!!.jsonPrimitive.content,
+                centerLon = center[0].jsonPrimitive.float,
+                centerLat = center[1].jsonPrimitive.float,
+                points = points
+            )
+        }
+    }
+    var zoom by remember { mutableFloatStateOf(1f) }
+    var pan by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    Column(Modifier.fillMaxSize().padding(6.dp)) {
+        Text("ARGENTINA · 23 PROVINCIAS Y CABA", fontSize = 12.sp,
+            fontWeight = FontWeight.Bold, modifier = Modifier.padding(4.dp))
+        Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFE7EDE8))) {
+            Canvas(Modifier.fillMaxSize()
+                .pointerInput(features, zoom, pan) {
+                    detectTransformGestures { centroid, panChange, zoomChange, _ ->
+                        zoom = (zoom * zoomChange).coerceIn(1f, 5f)
+                        pan += panChange
+                    }
+                }
+                .pointerInput(features, zoom, pan) {
+                    detectTapGestures { tap ->
+                        val projection = ArgentinaProjection(size.width.toFloat(), size.height.toFloat(), zoom, pan)
+                        val geo = projection.toGeo(tap)
+                        val hit = features.firstOrNull { pointInPolygon(geo.x, geo.y, it.points) }
+                        if (hit != null && state.provinces.any { it.id == hit.id }) onSelect(hit.id)
+                    }
+                }) {
+                val projection = ArgentinaProjection(size.width, size.height, zoom, pan)
+                features.forEach { feature ->
+                    val province = state.provinces.firstOrNull { it.id == feature.id } ?: return@forEach
+                    val path = Path()
+                    feature.points.forEachIndexed { index, point ->
+                        val screen = projection.toScreen(point.x, point.y)
+                        if (index == 0) path.moveTo(screen.x, screen.y) else path.lineTo(screen.x, screen.y)
+                    }
+                    path.close()
+                    drawPath(path, Color(0xFF55A85E))
+                    drawPath(path, if (province.id == selectedId) Color(0xFFFFC107) else Color(0xFF205C32),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = if (province.id == selectedId) 3.5f else 1.2f
+                        ))
+                    val label = projection.toScreen(feature.centerLon, feature.centerLat)
+                    drawContext.canvas.nativeCanvas.drawText(
+                        feature.name,
+                        label.x,
+                        label.y,
+                        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.BLACK
+                            textSize = if (feature.name.length > 17) 8.5f else 10.5f
+                            textAlign = android.graphics.Paint.Align.CENTER
+                            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+                        }
+                    )
+                }
+            }
+            Column(Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+                Text("Pellizca para acercar · Arrastra para mover",
+                    modifier = Modifier.background(Color.White.copy(alpha=.85f), RoundedCornerShape(6.dp))
+                        .padding(6.dp), fontSize = 9.sp)
+                TextButton(onClick = { zoom = 1f; pan = androidx.compose.ui.geometry.Offset.Zero }) {
+                    Text("Restablecer", fontSize = 10.sp)
+                }
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
         val selected = state.provinces.firstOrNull { it.id == selectedId }
         if (selected != null) {
-            ProvinceDetail(selected, state, onAttack, onConstruct)
-        } else {
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("Selecciona una provincia", style = MaterialTheme.typography.bodyMedium)
+            Box(Modifier.weight(0.9f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+                ProvinceDetail(selected, state, onAttack, onConstruct)
             }
+        } else {
+            Text("Toca una provincia para ver sus edificios y unidades.",
+                modifier = Modifier.padding(8.dp), fontSize = 12.sp)
         }
     }
 }
 
-@Composable
-private fun ProvinceCell(p: Province, state: GameState, selected: Boolean, onClick: () -> Unit) {
-    val country = state.countries.firstOrNull { it.id == p.ownerCountryId }
-    val color = Color(country?.colorArgb ?: 0xFF666666)
-    val irradiated = p.irradiatedUntil > System.currentTimeMillis()
-    Card(
-        modifier = Modifier
-            .aspectRatio(1f)
-            .border(
-                width = if (selected) 3.dp else 1.dp,
-                color = if (selected) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = .3f),
-                shape = RoundedCornerShape(10.dp)
-            )
-            .clickable { onClick() },
-        shape = RoundedCornerShape(10.dp)
-    ) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .background(color.copy(alpha = .25f))
-                .padding(6.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(p.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 2)
-            Text("👥 ${p.units.size}", fontSize = 10.sp)
-            Text(if (irradiated) "☢️ ${((p.irradiatedUntil - System.currentTimeMillis())/1000)}s" else "☢️ --", fontSize = 10.sp)
-        }
+private data class ArgentinaFeature(
+    val id: String, val name: String, val centerLon: Float, val centerLat: Float,
+    val points: List<androidx.compose.ui.geometry.Offset>
+)
+
+private class ArgentinaProjection(
+    width: Float, height: Float, private val zoom: Float,
+    private val pan: androidx.compose.ui.geometry.Offset
+) {
+    private val minLon = -73f
+    private val maxLon = -53f
+    private val minLat = -56f
+    private val maxLat = -21f
+    private val scale = minOf(width / (maxLon-minLon), height / (maxLat-minLat)) * .94f
+    private val left = (width - (maxLon-minLon)*scale)/2f
+    private val top = (height - (maxLat-minLat)*scale)/2f
+    fun base(lon: Float, lat: Float) = androidx.compose.ui.geometry.Offset(
+        left+(lon-minLon)*scale, top+(maxLat-lat)*scale
+    )
+    fun toScreen(lon: Float, lat: Float): androidx.compose.ui.geometry.Offset {
+        val p=base(lon,lat)
+        return androidx.compose.ui.geometry.Offset(
+            (p.x-widthCenter())*zoom+widthCenter()+pan.x,
+            (p.y-heightCenter())*zoom+heightCenter()+pan.y
+        )
     }
+    fun toGeo(screen: androidx.compose.ui.geometry.Offset): androidx.compose.ui.geometry.Offset {
+        val x=(screen.x-pan.x-widthCenter())/zoom+widthCenter()
+        val y=(screen.y-pan.y-heightCenter())/zoom+heightCenter()
+        return androidx.compose.ui.geometry.Offset(
+            minLon+(x-left)/scale, maxLat-(y-top)/scale
+        )
+    }
+    private fun widthCenter() = (left*2f + (maxLon-minLon)*scale)/2f
+    private fun heightCenter() = (top*2f + (maxLat-minLat)*scale)/2f
+}
+
+private fun pointInPolygon(x: Float, y: Float, points: List<androidx.compose.ui.geometry.Offset>): Boolean {
+    var inside = false
+    var j = points.lastIndex
+    for (i in points.indices) {
+        val a = points[i]; val b = points[j]
+        if ((a.y > y) != (b.y > y) &&
+            x < (b.x-a.x)*(y-a.y)/(b.y-a.y) + a.x) inside = !inside
+        j = i
+    }
+    return inside
 }
 
 @Composable
