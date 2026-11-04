@@ -73,8 +73,12 @@ fun MapScreen(
             Canvas(Modifier.fillMaxSize()
                 .pointerInput(features, zoom, pan) {
                     detectTransformGestures { centroid, panChange, zoomChange, _ ->
-                        zoom = (zoom * zoomChange).coerceIn(1f, 5f)
-                        pan += panChange
+                        val oldZoom = zoom
+                        val newZoom = (oldZoom * zoomChange).coerceIn(1f, 5f)
+                        val factor = newZoom / oldZoom
+                        val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
+                        pan = centroid + panChange - center - (centroid - center - pan) * factor
+                        zoom = newZoom
                     }
                 }
                 .pointerInput(features, zoom, pan) {
@@ -207,11 +211,41 @@ private fun ProvinceDetail(
                     }
                     else -> ""
                 }
-                Text("• ${building.type.displayName} nivel ${building.level}" +
-                    if (percentage.isNotEmpty()) " — producción $percentage cada 2 min" else "",
-                    fontSize = 12.sp)
+                val buildingIcon = when (building.type) {
+                    BuildingType.MILITARY_BASE -> "🏰"
+                    BuildingType.BARRACKS -> "🪖"
+                    BuildingType.FARM -> "🌾"
+                    BuildingType.MINE -> "⛏️"
+                    BuildingType.OIL_RIG -> "🛢️"
+                    BuildingType.MARKET -> "🏪"
+                    BuildingType.FACTORY -> "🏭"
+                    BuildingType.RESEARCH_LAB -> "🔬"
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(buildingIcon, fontSize = 24.sp, modifier = Modifier.padding(end = 8.dp))
+                    Text("${building.type.displayName} nivel ${building.level}" +
+                        if (percentage.isNotEmpty()) " — producción ${percentage} cada 2 min" else "",
+                        fontSize = 12.sp)
+                }
             }
             if (irradiated) Text("☢️ IRRADIADA — no conquistable", color = Color.Red, fontSize = 12.sp)
+            val activeConstructions = state.constructionQueue.filter { it.provinceId == p.id }
+            activeConstructions.forEach { order ->
+                val secondsLeft = ((order.endsAt - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L)
+                val timeLeft = "%02d:%02d".format(secondsLeft / 60L, secondsLeft % 60L)
+                val constructionIcon = when (order.type) {
+                    BuildingType.MILITARY_BASE -> "🏰"
+                    BuildingType.BARRACKS -> "🪖"
+                    BuildingType.FARM -> "🌾"
+                    BuildingType.MINE -> "⛏️"
+                    BuildingType.OIL_RIG -> "🛢️"
+                    BuildingType.MARKET -> "🏪"
+                    BuildingType.FACTORY -> "🏭"
+                    BuildingType.RESEARCH_LAB -> "🔬"
+                }
+                Text("$constructionIcon Construyendo ${order.type.displayName}: $timeLeft restantes",
+                    color = Color(0xFFB26A00), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
             if (isMine) {
                 Text("Construir o mejorar edificios:", fontSize = 13.sp,
                     modifier = Modifier.padding(top = 8.dp))
@@ -227,6 +261,17 @@ private fun ProvinceDetail(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        val typeIcon = when (type) {
+                            BuildingType.MILITARY_BASE -> "🏰"
+                            BuildingType.BARRACKS -> "🪖"
+                            BuildingType.FARM -> "🌾"
+                            BuildingType.MINE -> "⛏️"
+                            BuildingType.OIL_RIG -> "🛢️"
+                            BuildingType.MARKET -> "🏪"
+                            BuildingType.FACTORY -> "🏭"
+                            BuildingType.RESEARCH_LAB -> "🔬"
+                        }
+                        Text(typeIcon, fontSize = 26.sp, modifier = Modifier.padding(end = 8.dp))
                         Column(Modifier.weight(1f)) {
                             Text("${type.displayName} " +
                                 (current?.let { "Nv. ${it.level} → ${it.level + 1}" } ?: "Nv. 1"),
