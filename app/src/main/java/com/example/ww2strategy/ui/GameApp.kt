@@ -37,7 +37,8 @@ fun GameApp(vm: GameViewModel) {
                     state = state,
                     selectedId = selectedId,
                     onSelect = { vm.selectProvince(it) },
-                    onAttack = { from, to -> vm.attack(from, to) }
+                    onAttack = { from, to -> vm.attack(from, to) },
+                    onConstruct = { vm.construct(it) }
                 )
                 1 -> ArmyScreen(state, selectedId, onProduce = { vm.produce(it) })
                 2 -> ResearchScreen(state, onResearch = { vm.research(it) })
