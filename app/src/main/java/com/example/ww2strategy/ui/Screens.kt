@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.nativeCanvas
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.content
+import kotlinx.serialization.json.float
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
