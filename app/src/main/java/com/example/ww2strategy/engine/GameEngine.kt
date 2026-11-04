@@ -158,8 +158,16 @@ object GameEngine {
         if (toId !in from.neighbors) return null
         if (to.irradiatedUntil > now) return null
         if (from.units.isEmpty()) return null
-        val attackPower  = from.units.sumOf { it.type.attack  * (it.hp.toFloat() / it.type.baseHp) }
-        val defensePower = to.units.sumOf   { it.type.defense * (it.hp.toFloat() / it.type.baseHp) }
+        var attackPower: Double = 0.0
+        from.units.forEach { unidad ->
+            val proporcionVida = unidad.hp.toDouble() / unidad.type.baseHp.toDouble()
+            attackPower += unidad.type.attack.toDouble() * proporcionVida
+        }
+        var defensePower: Double = 0.0
+        to.units.forEach { unidad ->
+            val proporcionVida = unidad.hp.toDouble() / unidad.type.baseHp.toDouble()
+            defensePower += unidad.type.defense.toDouble() * proporcionVida
+        }
         val provinces = s.provinces.toMutableList()
         val fromIdx = provinces.indexOfFirst { it.id == fromId }
         val toIdx   = provinces.indexOfFirst { it.id == toId }
