@@ -109,7 +109,7 @@ fun BetaMenuScreen(onOpenGame: () -> Unit, onCreateGame: () -> Unit) {
                             Text("Configuración elegida", fontWeight = FontWeight.Bold)
                             Text("$selectedMap · $playerCount jugadores")
                             Text("País: $selectedCountry")
-                            Text("La selección se guarda como configuración local de prueba. El mapa mundial histórico con provincias reales todavía está en desarrollo.")
+                            Text("La selección se muestra como vista previa. El mapa mundial histórico con provincias reales todavía está en desarrollo.")
                         }
                     }
                     Button(
