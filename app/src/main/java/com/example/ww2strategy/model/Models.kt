@@ -126,22 +126,43 @@ data class GameState(
 )
 
 fun defaultCountries(): List<Country> = listOf(
-    Country("player", "Tu país",       0xFF3F51B5),
-    Country("enemy",  "Imperio rival", 0xFFB71C1C)
+    Country("player", "Argentina", 0xFF278A45)
 )
 
-fun defaultProvinces(): List<Province> = listOf(
-    Province("p1", "Buenos Aires (Capital)", "player", listOf("p2","p4"), Resources(50,30,20,15), 0, 0,
-        buildings = listOf(Building(BuildingType.MILITARY_BASE), Building(BuildingType.BARRACKS), Building(BuildingType.FACTORY)),
-        units = List(20) { MilitaryUnit("arg-start-$it", UnitType.SOLDIER, UnitType.SOLDIER.baseHp) }),
-    Province("p2", "Costa Norte",      "player", listOf("p1","p3","p5"),     Resources(30,40,10,10), 1, 0),
-    Province("p3", "Puerto",           "player", listOf("p2","p6"),          Resources(40,20,15,30), 2, 0),
-    Province("p4", "Llanura Central",  "player", listOf("p1","p5","p7"),     Resources(20,50,20,10), 0, 1),
-    Province("p5", "Montaña",          "player", listOf("p2","p4","p6","p8"),Resources(25,25,50,5),  1, 1),
-    Province("p6", "Río",              "player", listOf("p3","p5","p9"),     Resources(35,40,10,10), 2, 1),
-    Province("p7", "Desierto",         "enemy",  listOf("p4","p8"),          Resources(15,10,20,50), 0, 2),
-    Province("p8", "Frontera",         "enemy",  listOf("p5","p7","p9"),     Resources(20,20,30,20), 1, 2),
-    Province("p9", "Capital rival",    "enemy",  listOf("p6","p8"),          Resources(30,15,40,15), 2, 2,
-        buildings = listOf(Building(BuildingType.MILITARY_BASE), Building(BuildingType.BARRACKS), Building(BuildingType.FACTORY)),
-        units = List(20) { MilitaryUnit("rival-start-$it", UnitType.SOLDIER, UnitType.SOLDIER.baseHp) })
+private val provinceNames = listOf(
+    "Ciudad Autónoma de Buenos Aires", "Buenos Aires", "Catamarca", "Chaco",
+    "Chubut", "Córdoba", "Corrientes", "Entre Ríos", "Formosa", "Jujuy",
+    "La Pampa", "La Rioja", "Mendoza", "Misiones", "Neuquén", "Río Negro",
+    "Salta", "San Juan", "San Luis", "Santa Cruz", "Santa Fe",
+    "Santiago del Estero", "Tierra del Fuego", "Tucumán"
 )
+
+fun defaultProvinces(): List<Province> = provinceNames.mapIndexed { index, name ->
+    val isCapital = index == 0
+    Province(
+        id = listOf("caba","buenos-aires","catamarca","chaco","chubut","cordoba",
+            "corrientes","entre-rios","formosa","jujuy","la-pampa","la-rioja",
+            "mendoza","misiones","neuquen","rio-negro","salta","san-juan",
+            "san-luis","santa-cruz","santa-fe","santiago-del-estero",
+            "tierra-del-fuego","tucuman")[index],
+        name = name,
+        ownerCountryId = "player",
+        neighbors = emptyList(),
+        baseYield = Resources(
+            money = if (index == 1) 100 else if (index == 0) 70 else 35,
+            food = if (index == 1) 65 else 25,
+            metal = if (index == 1) 45 else 20,
+            oil = if (index == 1) 30 else 12
+        ),
+        x = 0,
+        y = 0,
+        buildings = if (isCapital) listOf(
+            Building(BuildingType.MILITARY_BASE),
+            Building(BuildingType.BARRACKS),
+            Building(BuildingType.FACTORY)
+        ) else emptyList(),
+        units = if (isCapital) List(20) {
+            MilitaryUnit("arg-start-$it", UnitType.SOLDIER, UnitType.SOLDIER.baseHp)
+        } else emptyList()
+    )
+}
