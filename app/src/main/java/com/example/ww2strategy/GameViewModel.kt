@@ -16,7 +16,11 @@ import kotlinx.coroutines.flow.update
 
 class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = GameRepository(app)
-    private val _state = MutableStateFlow(repo.load() ?: GameState())
+    private val _state = MutableStateFlow(
+        repo.load()?.takeIf { saved ->
+            saved.provinces.size == 24 && saved.provinces.any { it.id == "caba" }
+        } ?: GameState()
+    )
     val state: StateFlow<GameState> = _state.asStateFlow()
     private val _selectedProvince = MutableStateFlow<String?>(null)
     val selectedProvince: StateFlow<String?> = _selectedProvince.asStateFlow()
