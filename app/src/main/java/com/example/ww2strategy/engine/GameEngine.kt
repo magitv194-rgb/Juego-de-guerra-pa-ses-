@@ -16,6 +16,34 @@ object GameEngine {
                 lastResourceTick = s.lastResourceTick + ticks * 3 * 60_000L
             )
         }
+        val factoryMinutes = (now - s.lastFactoryTick) / 60_000L
+        if (factoryMinutes >= 2) {
+            val factoryTicks = (factoryMinutes / 2).toInt()
+            val factoryIncome = s.provinces
+                .filter { it.ownerCountryId == s.playerCountryId }
+                .fold(Resources(0, 0, 0, 0)) { total, province ->
+                    val factory = province.buildings.firstOrNull {
+                        it.type == BuildingType.FACTORY && !it.damaged
+                    }
+                    val rate = when (factory?.level) {
+                        1 -> 0.20
+                        2 -> 0.50
+                        3 -> 1.00
+                        4 -> 1.50
+                        else -> 0.0
+                    }
+                    total + Resources(
+                        (province.baseYield.money * rate).toLong(),
+                        (province.baseYield.food * rate).toLong(),
+                        (province.baseYield.metal * rate).toLong(),
+                        (province.baseYield.oil * rate).toLong()
+                    )
+                } * factoryTicks
+            s = s.copy(
+                resources = (s.resources + factoryIncome).nonNegative(),
+                lastFactoryTick = s.lastFactoryTick + factoryTicks * 2 * 60_000L
+            )
+        }
         val (doneProd, pendingProd) = s.productionQueue.partition { it.endsAt <= now }
         if (doneProd.isNotEmpty()) {
             val provinces = s.provinces.toMutableList()
@@ -131,6 +159,7 @@ object GameEngine {
         val existing = p.buildings.firstOrNull { it.type == type }
         if (existing != null && existing.level >= type.maxLevel) return null
         if (!s.resources.canAfford(type.cost)) return null
+        if (s.constructionQueue.any { it.provinceId == provinceId && it.type == type }) return null
         val order = ConstructionOrder(UUID.randomUUID().toString(), provinceId, type,
             now + type.minutes * 60_000L)
         return s.copy(
